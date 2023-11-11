@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { suggestCodeFromComment } from './helpers/index.js';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -42,17 +43,50 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	vscode.commands.registerCommand('gpt-code-helper.getGptSuggestions', () => {
+	vscode.commands.registerCommand('gpt-code-helper.getGptSuggestions', async () => {
 		const activeLine = vscode.window.activeTextEditor?.document.lineAt(vscode.window.activeTextEditor.selection.active.line);
-		console.log(vscode.window.activeTextEditor?.document.languageId);
+		const codeLanguage = vscode.window.activeTextEditor?.document.languageId;
 		console.log(activeLine);
+
+		const quickPickItems = [
+			{
+				label: 'Suggest Code from Comment',
+				detail: 'Get Code Suggestion from GPT',
+				command: 'suggestCode'
+			},
+			{
+				label: 'Lint Code',
+				detail: 'Lint Selected/All Code',
+				command: 'lintCode'
+			}
+		];
+
+		const optionSelected = await vscode.window.showQuickPick(quickPickItems, {
+			placeHolder: 'How can I help?',
+			matchOnDetail: true
+		});
+
+		console.log(optionSelected);
+		switch (optionSelected?.command) {
+			case 'suggestCode': {
+				// Get the API Key from the configuration setting
+				const apiKey = context.globalState.get('gptApiKey');
+				suggestCodeFromComment(apiKey, codeLanguage, activeLine?.text, activeLine?.lineNumber);
+				break;
+			}
+			case 'lintCode':
+			// lintCode(codeLanguage);
+			break;
+			default:
+		}
+
 	});
 
 	// Create a new status bar item
 	let statusBarItem: vscode.StatusBarItem;
 	statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-	statusBarItem.text = `$(megaphone) Suggest Code`;
-	statusBarItem.tooltip = 'Suggest Code';
+	statusBarItem.text = `$(code) GPT Code Helper`;
+	statusBarItem.tooltip = 'Click and select from options above';
 	statusBarItem.command = 'gpt-code-helper.getGptSuggestions';
 	statusBarItem.show();
 
