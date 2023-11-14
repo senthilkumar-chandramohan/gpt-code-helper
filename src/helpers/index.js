@@ -15,41 +15,85 @@ const insertTextInActiveTextEditor = (text, position) => {
     }
 };
 
-const suggestCodeFromComment = (apiKey, language, comment, insertSuggestionAt) => {
-    const query = `${language} code to ${comment} `;
-    const url = 'https://api.openai.com/v1/chat/completions';
-    const data = {
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {'role': 'user', 'content': query}
-        ],
-        temperature: 0.7
-    };
+const suggestCodeFromComment = async (statusBarItem, apiKey, language, comment, insertSuggestionAt) => {
+    if (comment.trim() === '') {
+        vscode.window.showErrorMessage('Please move prompt to a comment and try again! ');
+        return;
+    }
 
-    const headers = {
-        "Content-Type": "application/json",
-        "Accept": "text/event-stream",
-        "Authorization": `Bearer ${apiKey}`,
-    };
+    // Show loader in status bar
+    statusBarItem.text = `$(sync~spin) GPT Code Helper`;
 
-    axios.post(url, data, { headers })
-    .then(response => {
-        const {
-            choices: [{
-                message: {
-                    content,
+    // Show progress notification
+    const showProgressNotification = () => {
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Progress',
+            cancellable: true
+        }, async (progress, token) => {
+            let showSuggestion = true;
+
+            token.onCancellationRequested(() => {
+                showSuggestion = false;
+                statusBarItem.text = '$(code) GPT Code Helper';
+				console.log("User canceled operation");
+			});
+
+            progress.report({ increment: 0 });
+            setTimeout(() => {
+                progress.report({ increment: 30, message: "Fetching code suggestion..." });
+            }, 1000);
+
+            setTimeout(() => {
+                progress.report({ increment: 40, message: "Fetching code suggestion..." });
+            }, 3000);
+
+            try {
+                const query = `suggest just code, no comments in ${language} to ${comment} `;
+                const url = 'https://api.openai.com/v1/chat/completions';
+                const data = {
+                    model: 'gpt-3.5-turbo',
+                    messages: [
+                    {'role': 'user', 'content': query}
+                    ],
+                    temperature: 0.7
+                };
+
+                const headers = {
+                    "Content-Type": "application/json",
+                    "Accept": "text/event-stream",
+                    "Authorization": `Bearer ${apiKey}`,
+                };
+
+                const response = await axios.post(url, data, { headers });
+                
+                if (showSuggestion) {
+                    const {
+                        choices: [{
+                            message: {
+                                content,
+                            }
+                        }]
+                    } = response.data;
+                    const position = new vscode.Position(insertSuggestionAt + 1, 0);
+                    const codeSuggestion = content + `\n`;
+                    
+                    insertTextInActiveTextEditor(codeSuggestion, position);
                 }
-            }]
-        } = response.data;
+            } catch (error) {
+                console.error('Error:', error);
+                if (showSuggestion) {
+                    vscode.window.showInformationMessage('Error fetching code suggestion, please try again!');
+                }
+            } finally {
+                if (showSuggestion) {
+                    statusBarItem.text = '$(code) GPT Code Helper';
+                }
+            }
+        });
+    };
 
-        const position = new vscode.Position(insertSuggestionAt + 1, 0);
-        const codeSuggestion = content + `\n`;
-    
-        insertTextInActiveTextEditor(codeSuggestion, position);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
+    showProgressNotification();
 };
 
 export {

@@ -71,7 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
 			case 'suggestCode': {
 				// Get the API Key from the configuration setting
 				const apiKey = context.globalState.get('gptApiKey');
-				suggestCodeFromComment(apiKey, codeLanguage, activeLine?.text, activeLine?.lineNumber);
+				suggestCodeFromComment(statusBarItem, apiKey, codeLanguage, activeLine?.text, activeLine?.lineNumber);
 				break;
 			}
 			case 'lintCode':
@@ -79,7 +79,6 @@ export function activate(context: vscode.ExtensionContext) {
 			break;
 			default:
 		}
-
 	});
 
 	// Create a new status bar item
