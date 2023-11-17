@@ -37,6 +37,8 @@ const index_js_1 = __webpack_require__(2);
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 function activate(context) {
+    const gptWebViewProvider = new GPTWebViewProvider(context.extensionUri);
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider(GPTWebViewProvider.viewType, gptWebViewProvider));
     // Bito: Register command for setting GPT API Key
     vscode.commands.registerCommand('gpt-code-helper.setGptApiKey', () => {
         // The code you place here will be executed every time the command is executed
@@ -75,35 +77,35 @@ function activate(context) {
     vscode.commands.registerCommand('gpt-code-helper.getGptSuggestions', async () => {
         const activeLine = vscode.window.activeTextEditor?.document.lineAt(vscode.window.activeTextEditor.selection.active.line);
         const codeLanguage = vscode.window.activeTextEditor?.document.languageId;
-        console.log(activeLine);
         const quickPickItems = [
             {
                 label: 'Suggest Code from Comment',
-                detail: 'Get Code Suggestion from GPT',
+                detail: 'Get GPT Code Suggestion from a single line comment',
                 command: 'suggestCode'
             },
             {
-                label: 'Lint Code',
-                detail: 'Lint Selected/All Code',
-                command: 'lintCode'
+                label: 'Explain Code',
+                detail: 'Explain selected/highlighted code',
+                command: 'explainCode'
             }
         ];
         const optionSelected = await vscode.window.showQuickPick(quickPickItems, {
             placeHolder: 'How can I help?',
             matchOnDetail: true
         });
-        console.log(optionSelected);
+        // Get the API Key from the configuration setting
+        const apiKey = context.globalState.get('gptApiKey');
         switch (optionSelected?.command) {
             case 'suggestCode': {
-                // Get the API Key from the configuration setting
-                const apiKey = context.globalState.get('gptApiKey');
-                (0, index_js_1.suggestCodeFromComment)(statusBarItem, apiKey, codeLanguage, activeLine?.text, activeLine?.lineNumber);
+                (0, index_js_1.suggestCodeFromComment)(gptWebViewProvider, statusBarItem, apiKey, codeLanguage, activeLine?.text, activeLine?.lineNumber);
                 break;
             }
-            case 'lintCode':
-                // lintCode(codeLanguage);
+            case 'explainCode': {
+                (0, index_js_1.explainCode)(gptWebViewProvider, statusBarItem, apiKey, codeLanguage, 'Fetching code explanation...');
                 break;
-            default:
+            }
+            default: {
+            }
         }
     });
     // Create a new status bar item
@@ -116,6 +118,84 @@ function activate(context) {
     context.subscriptions.push(statusBarItem);
 }
 exports.activate = activate;
+class GPTWebViewProvider {
+    _extensionUri;
+    static viewType = 'gpt-code-helper.sideBarView';
+    _view;
+    constructor(_extensionUri) {
+        this._extensionUri = _extensionUri;
+    }
+    resolveWebviewView(webviewView, context, _token) {
+        this._view = webviewView;
+        webviewView.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [
+                this._extensionUri
+            ]
+        };
+        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+        webviewView.webview.onDidReceiveMessage(data => {
+            switch (data.type) {
+                case 'colorSelected':
+                    {
+                        vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(`#${data.value}`));
+                        break;
+                    }
+            }
+        });
+    }
+    showSuggestions(suggestions) {
+        if (this._view) {
+            this._view.show?.(true); // `show` is not implemented in 1.49 but is for 1.50 insiders
+            this._view.webview.postMessage(suggestions);
+        }
+    }
+    _getHtmlForWebview(webview) {
+        // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
+        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.js'));
+        // Do the same for the stylesheet.
+        const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
+        const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
+        const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
+        // Use a nonce to only allow a specific script to be run.
+        const nonce = getNonce();
+        return `<!DOCTYPE html>
+			<html lang="en">
+			<head>
+				<meta charset="UTF-8">
+
+				<!--
+					Use a content security policy to only allow loading styles from our extension directory,
+					and only allow scripts that have a specific nonce.
+					(See the 'webview-sample' extension sample for img-src content security policy examples)
+				-->
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+				<link href="${styleResetUri}" rel="stylesheet">
+				<link href="${styleVSCodeUri}" rel="stylesheet">
+				<link href="${styleMainUri}" rel="stylesheet">
+
+				<title>GPT Code Helper</title>
+			</head>
+			<body>
+				<p>Suggestions go here...</p>
+				<div id="suggestions"></div>
+
+				<script nonce="${nonce}" src="${scriptUri}"></script>
+			</body>
+			</html>`;
+    }
+}
+function getNonce() {
+    let text = '';
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < 32; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+}
 // This method is called when your extension is deactivated
 function deactivate() { }
 exports.deactivate = deactivate;
@@ -135,6 +215,7 @@ module.exports = require("vscode");
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   explainCode: () => (/* binding */ explainCode),
 /* harmony export */   suggestCodeFromComment: () => (/* binding */ suggestCodeFromComment)
 /* harmony export */ });
 /* harmony import */ var vscode__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1);
@@ -157,7 +238,7 @@ const insertTextInActiveTextEditor = (text, position) => {
     }
 };
 
-const suggestCodeFromComment = async (statusBarItem, apiKey, language, comment, insertSuggestionAt) => {
+const suggestCodeFromComment = async (gptWebViewProvider, statusBarItem, apiKey, language, comment, insertSuggestionAt) => {
     if (comment.trim() === '') {
         vscode__WEBPACK_IMPORTED_MODULE_0__.window.showErrorMessage('Please move prompt to a comment and try again! ');
         return;
@@ -220,6 +301,99 @@ const suggestCodeFromComment = async (statusBarItem, apiKey, language, comment, 
                     const position = new vscode__WEBPACK_IMPORTED_MODULE_0__.Position(insertSuggestionAt + 1, 0);
                     const codeSuggestion = content + `\n`;
                     
+                    insertTextInActiveTextEditor(codeSuggestion, position);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                if (showSuggestion) {
+                    vscode__WEBPACK_IMPORTED_MODULE_0__.window.showInformationMessage('Error fetching code suggestion, please try again!');
+                }
+            } finally {
+                if (showSuggestion) {
+                    statusBarItem.text = '$(code) GPT Code Helper';
+                }
+            }
+        });
+    };
+
+    showProgressNotification();
+};
+
+const explainCode = async (gptWebViewProvider, statusBarItem, apiKey, language, progressMessage) => {
+    const editor = vscode__WEBPACK_IMPORTED_MODULE_0__.window.activeTextEditor;
+    const selection = editor.selection;
+
+    if (selection?.isEmpty) {
+        vscode__WEBPACK_IMPORTED_MODULE_0__.window.showErrorMessage('Please select/highlight a block of code and try again! ');
+        return;
+    }
+
+    const selectionRange = new vscode__WEBPACK_IMPORTED_MODULE_0__.Range(selection.start.line, selection.start.character, selection.end.line, selection.end.character);
+    const highlighted = editor.document.getText(selectionRange);
+    const insertSuggestionAt = selection.end.line;
+
+    // console.log(highlighted);
+    // vscode.window.showInformationMessage(`${highlighted}`);
+
+    // Show loader in status bar
+    statusBarItem.text = `$(sync~spin) GPT Code Helper`;
+
+    // Show progress notification
+    const showProgressNotification = () => {
+        vscode__WEBPACK_IMPORTED_MODULE_0__.window.withProgress({
+            location: vscode__WEBPACK_IMPORTED_MODULE_0__.ProgressLocation.Notification,
+            title: 'Progress',
+            cancellable: true
+        }, async (progress, token) => {
+            let showSuggestion = true;
+
+            token.onCancellationRequested(() => {
+                showSuggestion = false;
+                statusBarItem.text = '$(code) GPT Code Helper';
+                console.log("User canceled operation");
+            });
+
+            progress.report({ increment: 0 });
+            setTimeout(() => {
+                progress.report({ increment: 30, message: progressMessage });
+            }, 1000);
+
+            setTimeout(() => {
+                progress.report({ increment: 40, message: progressMessage });
+            }, 3000);
+
+            try {
+                const query = `explain this ${language} code: ${highlighted}`;
+                const url = 'https://api.openai.com/v1/chat/completions';
+                const data = {
+                    model: 'gpt-3.5-turbo',
+                    messages: [
+                    {'role': 'user', 'content': query}
+                    ],
+                    temperature: 0.7
+                };
+
+                const headers = {
+                    "Content-Type": "application/json",
+                    "Accept": "text/event-stream",
+                    "Authorization": `Bearer ${apiKey}`,
+                };
+
+                const response = await axios__WEBPACK_IMPORTED_MODULE_1__["default"].post(url, data, { headers });
+
+                if (showSuggestion) {
+                    const {
+                        choices: [{
+                            message: {
+                                content,
+                            }
+                        }]
+                    } = response.data;
+                    const position = new vscode__WEBPACK_IMPORTED_MODULE_0__.Position(insertSuggestionAt + 1, 0);
+                    const codeSuggestion = content + `\n`;
+
+                    gptWebViewProvider.showSuggestions([{text: content}]);
+                                        
                     insertTextInActiveTextEditor(codeSuggestion, position);
                 }
             } catch (error) {

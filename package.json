@@ -12,6 +12,15 @@
   "activationEvents": ["onStartupFinished"],
   "main": "./dist/extension.js",
   "contributes": {
+    "views": {
+			"explorer": [
+				{
+					"type": "webview",
+					"id": "gpt-code-helper.sideBarView",
+					"name": "GPT Code Helper"
+				}
+			]
+		},
     "commands": [
       {
         "command": "gpt-code-helper.helloWorld",
