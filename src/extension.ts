@@ -149,6 +149,7 @@ class GPTWebViewProvider implements vscode.WebviewViewProvider {
 		// Do the same for the stylesheet.
 		const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
 		const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
+		const styleBootStrapGridUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'bootstrap-grid.min.css'));
 		const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
 
 		// Use a nonce to only allow a specific script to be run.
@@ -170,13 +171,23 @@ class GPTWebViewProvider implements vscode.WebviewViewProvider {
 
 				<link href="${styleResetUri}" rel="stylesheet">
 				<link href="${styleVSCodeUri}" rel="stylesheet">
+				<link href="${styleBootStrapGridUri}" rel="stylesheet">
 				<link href="${styleMainUri}" rel="stylesheet">
 
 				<title>GPT Code Helper</title>
 			</head>
 			<body>
-				<p>Suggestions go here...</p>
-				<div id="suggestions"></div>
+				<div class="container">
+					<div class="row">
+						<div class="col-md-12">
+							<div id="suggestions-box" class="suggestions-box" data-show-slides="false" data-min-slide="0" data-max-slide="0">
+								<button id="prev-suggestion" class="prev-suggestion"><</button>
+								<button id="next-suggestion" class="next-suggestion">></button>
+								<ul id="suggestions" class="suggestions"></ul>
+							</div>
+						</div>
+					</div>
+				</div>
 
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>

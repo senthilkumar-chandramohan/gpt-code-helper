@@ -68,6 +68,18 @@ const suggestCodeFromComment = async (gptWebViewProvider, statusBarItem, apiKey,
                 const response = await axios.post(url, data, { headers });
                 
                 if (showSuggestion) {
+                    response.data.choices.push({
+                        index: 1,
+                        finish_reason: 'stop',
+                        message: {
+                            role: 'assistant',
+                            content: response.data.choices[0].message.content.toUpperCase(),
+                        }
+                    });
+
+                    console.log("======================+++++++++");
+                    console.log(response.data);
+
                     const {
                         choices: [{
                             message: {
@@ -75,6 +87,7 @@ const suggestCodeFromComment = async (gptWebViewProvider, statusBarItem, apiKey,
                             }
                         }]
                     } = response.data;
+
                     const position = new vscode.Position(insertSuggestionAt + 1, 0);
                     const codeSuggestion = content + `\n`;
                     
@@ -107,10 +120,8 @@ const explainCode = async (gptWebViewProvider, statusBarItem, apiKey, language, 
 
     const selectionRange = new vscode.Range(selection.start.line, selection.start.character, selection.end.line, selection.end.character);
     const highlighted = editor.document.getText(selectionRange);
-    const insertSuggestionAt = selection.end.line;
-
+    // const insertSuggestionAt = selection.end.line;
     // console.log(highlighted);
-    // vscode.window.showInformationMessage(`${highlighted}`);
 
     // Show loader in status bar
     statusBarItem.text = `$(sync~spin) GPT Code Helper`;
@@ -159,22 +170,39 @@ const explainCode = async (gptWebViewProvider, statusBarItem, apiKey, language, 
                 const response = await axios.post(url, data, { headers });
 
                 if (showSuggestion) {
-                    const {
-                        choices: [{
-                            message: {
-                                content,
-                            }
-                        }]
-                    } = response.data;
-                    const position = new vscode.Position(insertSuggestionAt + 1, 0);
-                    const codeSuggestion = content + `\n`;
+                    response.data.choices.push({
+                        index: 1,
+                        finish_reason: 'stop',
+                        message: {
+                            role: 'assistant',
+                            content: response.data.choices[0].message.content.toUpperCase(),
+                        }
+                    });
 
-                    gptWebViewProvider.showSuggestions([{text: content}]);
-                                        
-                    insertTextInActiveTextEditor(codeSuggestion, position);
+                    response.data.choices.push({
+                        index: 1,
+                        finish_reason: 'stop',
+                        message: {
+                            role: 'assistant',
+                            content: response.data.choices[0].message.content.toLowerCase(),
+                        }
+                    });
+
+                    console.log("======================+++++++++");
+                    console.log(response.data);
+                    const {
+                        data: {
+                            choices
+                        }
+                    } = response;
+
+                    gptWebViewProvider.showSuggestions(choices);
+
+                    // const position = new vscode.Position(insertSuggestionAt + 1, 0);
+                    // const codeSuggestion = content + `\n`;
+                    // insertTextInActiveTextEditor(codeSuggestion, position);
                 }
             } catch (error) {
-                console.error('Error:', error);
                 if (showSuggestion) {
                     vscode.window.showInformationMessage('Error fetching code suggestion, please try again!');
                 }

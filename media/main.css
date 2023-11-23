@@ -2,39 +2,76 @@ body {
 	background-color: transparent;
 }
 
-.color-list {
-	list-style: none;
+.container {
 	padding: 0;
 }
 
-.color-entry {
+.suggestions-box {
+	position: relative;
 	width: 100%;
-	display: flex;
-	margin-bottom: 0.4em;
-	border: 1px solid var(--vscode-input-border);
+    overflow: hidden;
+	display: none;
 }
 
-.color-preview {
-	width: 2em;
-	height: 2em;
+.suggestions-box[data-show-slides="true"] {
+	width: 250px;
 }
 
-.color-preview:hover {
-	outline: inset white;
-}
-
-.color-input {
+.suggestions-box.show {
 	display: block;
-	flex: 1;
-	width: 100%;
-	color: var(--vscode-input-foreground);
-	background-color: var(--vscode-input-background);
-	border: none;
-	padding: 0 0.6em;
 }
 
-.add-color-button {
+button.prev-suggestion, button.next-suggestion {
+	width: 20px;
+	display: none;
+}
+
+button.prev-suggestion[disabled], button.next-suggestion[disabled] {
+	background-color: gray;
+}
+
+.suggestions-box[data-show-slides="true"] button.prev-suggestion, .suggestions-box[data-show-slides="true"] button.next-suggestion {
+	display: inline-block;
+}
+
+ul.suggestions {
+	list-style: none;
+	padding: 0;
+    width: 100%;
+    display: block;
+	position: relative;
+	clear: both;
+}
+
+.suggestions-box[data-show-slides="true"] ul.suggestions {
+	left: 0;
+	transition: left 0.5s linear;
+    width: 1000px;
+}
+
+.suggestions-box[data-active-slide="0"] ul.suggestions {
+	left: 0;
+}
+
+.suggestions-box[data-active-slide="1"] ul.suggestions {
+	left: -250px;
+}
+
+.suggestions-box[data-active-slide="2"] ul.suggestions {
+	left: -500px;
+}
+
+.suggestions-box[data-active-slide="3"] ul.suggestions {
+	left: -750px;
+}
+
+ul.suggestions li {
 	display: block;
-	border: none;
-	margin: 0 auto;
+	float: left;
+	padding: 0;
+	margin: 0;
+}
+
+.suggestions-box[data-show-slides="true"] ul.suggestions li {
+	width: 250px;
 }
