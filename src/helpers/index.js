@@ -68,18 +68,6 @@ const suggestCodeFromComment = async (gptWebViewProvider, statusBarItem, apiKey,
                 const response = await axios.post(url, data, { headers });
                 
                 if (showSuggestion) {
-                    response.data.choices.push({
-                        index: 1,
-                        finish_reason: 'stop',
-                        message: {
-                            role: 'assistant',
-                            content: response.data.choices[0].message.content.toUpperCase(),
-                        }
-                    });
-
-                    console.log("======================+++++++++");
-                    console.log(response.data);
-
                     const {
                         choices: [{
                             message: {
@@ -109,7 +97,7 @@ const suggestCodeFromComment = async (gptWebViewProvider, statusBarItem, apiKey,
     showProgressNotification();
 };
 
-const explainCode = async (gptWebViewProvider, statusBarItem, apiKey, language, progressMessage) => {
+const getSuggestions = async (suggestionType, gptWebViewProvider, statusBarItem, apiKey, language, progressMessage) => {
     const editor = vscode.window.activeTextEditor;
     const selection = editor.selection;
 
@@ -120,8 +108,6 @@ const explainCode = async (gptWebViewProvider, statusBarItem, apiKey, language, 
 
     const selectionRange = new vscode.Range(selection.start.line, selection.start.character, selection.end.line, selection.end.character);
     const highlighted = editor.document.getText(selectionRange);
-    // const insertSuggestionAt = selection.end.line;
-    // console.log(highlighted);
 
     // Show loader in status bar
     statusBarItem.text = `$(sync~spin) GPT Code Helper`;
@@ -150,8 +136,19 @@ const explainCode = async (gptWebViewProvider, statusBarItem, apiKey, language, 
                 progress.report({ increment: 40, message: progressMessage });
             }, 3000);
 
+            let query;
+
+            switch (suggestionType) {
+                case "explainCode" : query = `explain this ${language} code: ${highlighted}`; break;
+                case "genUnitTestCode": query= `generate unit test code for ${language} code: ${highlighted}`; break;
+                case "genUnitTestCases": query= `generate unit test cases for ${language} code: ${highlighted}`; break;
+                case "fixBugs": query= `fix bugs in ${language} code: ${highlighted}`; break;
+                case "addDebugCode": query= `add debugger lines in ${language} code: ${highlighted}`; break;
+                case "cleanCode": query= `treeshake ${language} code: ${highlighted}`; break;
+                default: 
+            };
+
             try {
-                const query = `explain this ${language} code: ${highlighted}`;
                 const url = 'https://api.openai.com/v1/chat/completions';
                 const data = {
                     model: 'gpt-3.5-turbo',
@@ -170,37 +167,13 @@ const explainCode = async (gptWebViewProvider, statusBarItem, apiKey, language, 
                 const response = await axios.post(url, data, { headers });
 
                 if (showSuggestion) {
-                    response.data.choices.push({
-                        index: 1,
-                        finish_reason: 'stop',
-                        message: {
-                            role: 'assistant',
-                            content: response.data.choices[0].message.content.toUpperCase(),
-                        }
-                    });
-
-                    response.data.choices.push({
-                        index: 1,
-                        finish_reason: 'stop',
-                        message: {
-                            role: 'assistant',
-                            content: response.data.choices[0].message.content.toLowerCase(),
-                        }
-                    });
-
-                    console.log("======================+++++++++");
-                    console.log(response.data);
                     const {
                         data: {
                             choices
                         }
                     } = response;
 
-                    gptWebViewProvider.showSuggestions(choices);
-
-                    // const position = new vscode.Position(insertSuggestionAt + 1, 0);
-                    // const codeSuggestion = content + `\n`;
-                    // insertTextInActiveTextEditor(codeSuggestion, position);
+                    gptWebViewProvider.showSuggestions(suggestionType, choices);
                 }
             } catch (error) {
                 if (showSuggestion) {
@@ -219,5 +192,5 @@ const explainCode = async (gptWebViewProvider, statusBarItem, apiKey, language, 
 
 export {
     suggestCodeFromComment,
-    explainCode,
+    getSuggestions,
 };

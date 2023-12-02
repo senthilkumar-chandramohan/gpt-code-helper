@@ -23,19 +23,7 @@
 		},
     "commands": [
       {
-        "command": "gpt-code-helper.helloWorld",
-        "title": "Hello World"
-      },
-      {
-        "command": "gpt-code-helper.setGptApiKey",
-        "title": "GPT Code Helper: Set GPT API Key"
-      },
-      {
-        "command": "gpt-code-helper.getGptApiKey",
-        "title": "GPT Code Helper: Display GPT API Key"
-      },
-      {
-        "command": "gpt-code-helper.getGptSuggestions",
+        "command": "gpt-code-helper.manageGptApiKey",
         "title": "GPT Code Helper: Get GPT Code Suggestions"
       }
     ]
