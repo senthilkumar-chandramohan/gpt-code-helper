@@ -1,7 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { suggestCodeFromComment, getSuggestions } from './helpers/index.js';
+import * as path from 'path';
+
+import { suggestCodeFromComment, getSuggestions } from './helpers/index';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -40,7 +42,6 @@ export function activate(context: vscode.ExtensionContext) {
 						}
 					case 'runCommand':
 						{
-							const activeLine = vscode.window.activeTextEditor?.document.lineAt(vscode.window.activeTextEditor.selection.active.line);
 							const codeLanguage = vscode.window.activeTextEditor?.document.languageId;
 
 							if (!codeLanguage) {
@@ -49,7 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
 							}
 
 							// Get the API Key from the configuration setting
-							const apiKey = context.globalState.get('gptApiKey');
+							const apiKey: string | undefined = context.globalState.get('gptApiKey');
 
 							if (!apiKey) {
 								vscode.window.showInformationMessage('GPT API Key is not set, please click on "GPT Code Helper" on status bar (bottom-right) to set it and try again.');
@@ -57,6 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
 							}
 
 							if (data.command === 'suggestCode') {
+								const activeLine = vscode.window.activeTextEditor?.document.lineAt(vscode.window.activeTextEditor.selection.active.line);
 								suggestCodeFromComment(gptWebViewProvider, statusBarItem, apiKey, codeLanguage, activeLine?.text, activeLine?.lineNumber);
 							} else {
 								getSuggestions(data.command, gptWebViewProvider, statusBarItem, apiKey, codeLanguage, 'Fetching suggestions from GPT...');
@@ -66,10 +68,10 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 		}
 
-		public showSuggestions(suggestionType:String, suggestions:Array<Object>) {
+		public showSuggestions(suggestionsData: Object) {
 			if (this._view) {
 				this._view.show?.(true); // `show` is not implemented in 1.49 but is for 1.50 insiders
-				this._view.webview.postMessage({ suggestionType, suggestions });
+				this._view.webview.postMessage(suggestionsData);
 			}
 		}
 
@@ -155,7 +157,7 @@ export function activate(context: vscode.ExtensionContext) {
 									<div class="container">
 										<div class="row">
 											<div class="col-12">
-												<h2 id="suggestion-type"></h2>
+												<h3 id="suggestion-type"></h3>
 											</div>
 										</div>
 										<div class="row">
@@ -196,14 +198,6 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.window.registerWebviewViewProvider(GPTWebViewProvider.viewType, gptWebViewProvider));
 
 	vscode.commands.registerCommand('gpt-code-helper.manageGptApiKey', async () => {
-		const activeLine = vscode.window.activeTextEditor?.document.lineAt(vscode.window.activeTextEditor.selection.active.line);
-		const codeLanguage = vscode.window.activeTextEditor?.document.languageId;
-
-		if (!codeLanguage) {
-			vscode.window.showInformationMessage('Language is not set, please select filetype on bottom-right of vscode and try again.');
-			return;
-		}
-
 		const quickPickItems = [
 			{
 				label: 'Set GPT API Key',
@@ -230,7 +224,6 @@ export function activate(context: vscode.ExtensionContext) {
 				});
 
 				if (apiKey && apiKey.length) {
-					console.log("API KEY1: ", apiKey);
 					context.globalState.update('gptApiKey', apiKey);
 					vscode.window.showInformationMessage('GPT API Key set successfully');
 				} else {
@@ -277,6 +270,71 @@ export function activate(context: vscode.ExtensionContext) {
 	statusBarItem.show();
 
 	context.subscriptions.push(statusBarItem);
+	const panel = vscode.window.createWebviewPanel(
+        'welcome', // Identifies the type of the webview. Used internally
+        'Welcome to GPT Code Helper!', // Title of the panel displayed to the user
+        vscode.ViewColumn.One, // Editor column to show the new webview panel in
+        {
+            enableScripts: false,
+        }
+    );
+
+	// Get the path to the webview content on disk
+    const onDiskPath = vscode.Uri.file(
+        path.join(context.extensionPath, 'demo')
+    );
+
+    // Convert the on-disk path to a vscode-resource URI
+    const webViewPath = panel.webview.asWebviewUri(onDiskPath);
+
+	const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Welcome to GPT Code Helper</title>
+        </head>
+        <body>
+			<h1>Welcome to GPT Code Helper</h1>
+			<h2>VSCode Extension to help you to write code, powered by GPT from OpenAI.</h2>
+			
+			<h3>Features</h3>
+			<ol>
+				<li>Code suggestion from a given one-line comment</li>
+				<li>Code explanation</li>
+				<li>Code cleaning / Tree-shaking</li>
+				<li>Adding Debugger code</li>
+				<li>Bug fixing</li>
+				<li>Unit tests generation</li>
+				<li>Unit test cases generation</li>
+			</ol>
+			
+			<h4>Samples:</h4>
+			<img src="${webViewPath}/demo1.gif" style="width: 90%" />
+			<img src="${webViewPath}/demo2.gif" style="width: 90%" />
+			
+			<h3>Requirements</h3>
+			<p>Need GPT API Key from <a href="https://platform.openai.com/api-keys">https://platform.openai.com/api-keys</a></p>
+
+			<h3>Getting Started</h3>
+			<ol>
+				<li>Click on '&lt;/&gt; GPT Code Helper' status bar item on bottom-right</li>
+				<li>Click on 'Set GPT API Key' option</li>
+				<li>Enter your GPT API Key copied from <a href="https://platform.openai.com/api-keys">https://platform.openai.com/api-keys</a></li>
+				<li>Open 'GPT CODE HELPER' webview from Explorer side bar on the left</li>
+				<li>Select from available options</li>
+			</ol>
+			<h3>Developer Info</h3>
+			<p>&copy; Senthil Chandramohan</p>
+			<a class="github" target="_blank" rel="noreferrer" href="https://github.com/senthilkumar-chandramohan">Github</a>
+			<a class="linkedin" target="_blank" rel="noreferrer" href="https://www.linkedin.com/in/senthilkumar-chandramohan/">LinkedIn</a>
+		</body>
+        </html>
+    `;
+
+    // And load the welcome screen into the webview
+    panel.webview.html = htmlContent;
 }
 
 // This method is called when your extension is deactivated

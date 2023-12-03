@@ -1,5 +1,3 @@
-//@ts-check
-
 // This script will be run within the webview itself
 // It cannot access the main VS Code APIs directly.
 (function () {
@@ -139,13 +137,10 @@
     });
 
     var elements = document.getElementsByClassName('tile');
-
-        // Attach a click event to each element
-        for (var i = 0; i < elements.length; i++) {
-            elements[i].addEventListener('click', (e) => {
-                const command = e.target.getAttribute('data-command');
-                console.log(command);
-                vscode.postMessage({ type: 'runCommand', command });
-            });
-        }
+    for (var i = 0; i < elements.length; i++) {
+        elements[i].addEventListener('click', (e) => {
+            const command = e.target.getAttribute('data-command');
+            vscode.postMessage({ type: 'runCommand', command });
+        });
+    }
 }());
